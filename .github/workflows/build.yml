@@ -42,7 +42,7 @@ jobs:
 
       - name: Change custom domain
         run: |
-          sed -i '/sagernet/s/sing-box.sagernet.org/sing-boxr.dustinwin.us.kg/' ./site/CNAME
+          sed -i '/sagernet/s/sing-box.sagernet.org/sing-boxr.dustinwin.cc.cd/' ./site/CNAME
 
       - name: Git push assets to "docs" branch
         run: |
