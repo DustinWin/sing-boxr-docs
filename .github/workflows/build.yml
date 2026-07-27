@@ -26,11 +26,11 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.14'
 
-      - name: Get `sing-box reF1nd-Test` version
+      - name: Get `sing-box reF1nd-Testing` version
         run: echo "ref1nd_version=$(git tag -l --sort=v:refname | grep -Po '^v\K.*(alpha|beta|rc).*-reF1nd.*' | tail -n1)" >> $GITHUB_ENV
 
       - name: Install and build docs
@@ -42,7 +42,7 @@ jobs:
 
       - name: Change custom domain
         run: |
-          sed -i '/sagernet/s/sing-box.sagernet.org/sing-boxr.dustinwin.us.kg/' ./site/CNAME
+          sed -i '/sagernet/s/sing-box.sagernet.org/sing-boxr.dustinwin.cc.cd/' ./site/CNAME
 
       - name: Git push assets to "docs" branch
         run: |
