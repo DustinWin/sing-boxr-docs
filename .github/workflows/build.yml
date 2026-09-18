@@ -2,7 +2,7 @@ name: Build Docs
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "0 0 * * *"
       timezone: "Asia/Shanghai"
   push:
     branches:
@@ -16,8 +16,37 @@ permissions:
   pages: write
 
 jobs:
+  assess:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.version.outputs.latest_version }}
+      current_version: ${{ steps.version.outputs.current_version }}
+      update_docs: ${{ steps.compare.outputs.update_docs }}
+    steps:
+      - name: Get `sing-box` version
+        id: version
+        run: |
+          echo "latest_version=$(curl -fsSL https://api.github.com/repos/reF1nd/sing-box/tags | jq -r '.[].name' | grep -Po '^v\K.*(alpha|beta|rc).*-reF1nd.*' | head -n 1)" >> "${GITHUB_OUTPUT}"
+          echo "current_version=$(curl -fsSL https://github.com/DustinWin/proxy-tools/releases/tag/sing-box | grep -oP '(?<=v)\d+\.\d+\.\d+.*?(alpha|beta|rc).*?-reF1nd[^，]*' | head -n 1)" >> "${GITHUB_OUTPUT}"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          if [ "${{ steps.version.outputs.latest_version }}" != "${{ steps.version.outputs.current_version }}" ]; then
+            echo "当前 sing-box reF1nd 版 docs 有更新 v${{ steps.version.outputs.latest_version }}"
+            update_docs=true
+          else
+            echo "当前 sing-box reF1nd 版 docs 已是最新版 v${{ steps.version.outputs.current_version }}"
+            update_docs=false
+          fi
+          echo "update_docs=${update_docs}" >> "${GITHUB_OUTPUT}"
+
   build:
     runs-on: ubuntu-latest
+    if: ${{ needs.assess.outputs.update_docs == 'true' }}
+    needs: assess
+    env:
+      ref1nd_VERSION: ${{ needs.assess.outputs.latest_version }}
     steps:
       - name: Checkout `reF1nd-testing`
         uses: actions/checkout@v7
@@ -26,17 +55,15 @@ jobs:
           ref: reF1nd-testing
           fetch-depth: 0
 
-      - name: Get Python version
+      - name: Get `Python` version
+        id: python
         run: |
-          echo "python_version=$(curl -fsSL https://endoflife.date/api/python.json | jq -r '.[0].latest')" >> "${GITHUB_ENV}"
+          echo "python_version=$(curl -fsSL https://endoflife.date/api/python.json | jq -r '.[0].latest')" >> "${GITHUB_OUTPUT}"
 
       - name: Setup Python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.python_version }}
-
-      - name: Get `sing-box reF1nd-Testing` version
-        run: echo "ref1nd_version=$(git tag -l --sort=v:refname | grep -Po '^v\K.*(alpha|beta|rc).*-reF1nd.*' | tail -n1)" >> "${GITHUB_ENV}"
+          python-version: ${{ steps.python.outputs.python_version }}
 
       - name: Install and build docs
         run: |
@@ -57,7 +84,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b docs
           git add .
-          git commit -m "更新 sing-box reF1nd 版 docs 至 ${ref1nd_version}"
+          git commit -m "更新 sing-box reF1nd 版 docs 至 v${{ env.ref1nd_VERSION }}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f origin docs
 
